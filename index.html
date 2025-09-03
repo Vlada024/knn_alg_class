@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KNN Scatterplot Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <canvas id="scatterplot" width="400" height="400"></canvas>
+    <div class="controls">
+      <label for="k-select">K:</label>
+      <select id="k-select">
+        <option value="1">1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="9">9</option>
+      </select>
+      <button id="classify-btn">Classify</button>
+      <button id="randomize-btn">Randomize Data</button>
+      <button id="reset-query-btn">Reset Query</button>
+    </div>
+    <div id="result" class="result"></div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
