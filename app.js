@@ -20,43 +20,24 @@ window.onload = function() {
     1: '#ff9800'  // orange
   };
 
-  // Generate random dataset
+  // Generate random dataset (regression)
   function generateDataset() {
     const numPoints = Math.floor(Math.random() * 3) + 9; // 9–11
     let pointsArr = [];
-    let classCounts = [0, 0];
     for (let i = 0; i < numPoints; i++) {
-      // Alternate class assignment for fair distribution
-      let label = i % 2;
-      classCounts[label]++;
       pointsArr.push({
         x: Math.random(),
         y: Math.random(),
-        label
+        value: Math.round(Math.random() * 100)
       });
-    }
-    // If uneven, adjust last point
-    if (Math.abs(classCounts[0] - classCounts[1]) > 1) {
-      pointsArr[pointsArr.length - 1].label = classCounts[0] > classCounts[1] ? 1 : 0;
     }
     return pointsArr;
   }
 
-  // Draw all points
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw training points
-    points.forEach(pt => {
-      drawPoint(pt.x, pt.y, COLORS[pt.label], 7);
-    });
-    // Draw query point if exists
-    if (queryPoint) {
-      drawPoint(queryPoint.x, queryPoint.y, '#888', 11);
-    }
-  }
-
-  // Draw a single point (crisp, centered)
-  function drawPoint(nx, ny, color, radius) {
+  // Draw a single point with value and color by value
+  function drawPoint(nx, ny, value, radius, showValue) {
+    // Color scale: blue for low, orange for high
+    const color = value < 50 ? '#1976d2' : '#ff9800';
     const px = Math.round(nx * canvas.width) + 0.5;
     const py = Math.round(ny * canvas.height) + 0.5;
     ctx.save();
@@ -69,7 +50,64 @@ window.onload = function() {
     ctx.lineWidth = 2;
     ctx.fill();
     ctx.stroke();
+    // Draw value if present
+    if (showValue) {
+      ctx.font = `bold ${radius * 1.7}px Inter, Arial`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.95;
+      ctx.fillText(value, px, py);
+      ctx.globalAlpha = 1.0;
+    }
     ctx.restore();
+  }
+
+  // Enhanced render: draw lines to neighbors if classified
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Draw training points
+    points.forEach(pt => {
+      drawPoint(pt.x, pt.y, pt.value, 13, true);
+    });
+    // Draw query point if exists
+    if (queryPoint) {
+      // Draw lines to neighbors if classified
+      if (queryPoint.classified && queryPoint.neighbors) {
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = queryPoint.value < 50 ? '#1976d2' : '#ff9800';
+        ctx.lineWidth = 2;
+        queryPoint.neighbors.forEach(npt => {
+          ctx.beginPath();
+          ctx.moveTo(queryPoint.x * canvas.width, queryPoint.y * canvas.height);
+          ctx.lineTo(npt.x * canvas.width, npt.y * canvas.height);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      // Draw query point in gray or classified color, slightly larger, with value if classified
+      if (queryPoint.classified) {
+        drawPoint(queryPoint.x, queryPoint.y, queryPoint.value, 16, true);
+      } else {
+        // Neutral gray dot, no value
+        const px = Math.round(queryPoint.x * canvas.width) + 0.5;
+        const py = Math.round(queryPoint.y * canvas.height) + 0.5;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px, py, 16, 0, 2 * Math.PI);
+        ctx.fillStyle = '#888';
+        ctx.shadowColor = '#888';
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   }
 
   // Initial dataset and render
@@ -81,7 +119,9 @@ window.onload = function() {
   }
 
   // Randomize Data button
-  randomizeBtn.onclick = resetAll;
+  randomizeBtn.onclick = function() {
+    resetAll();
+  };
 
   // Initial load
   resetAll();
@@ -106,7 +146,7 @@ window.onload = function() {
     render();
   };
 
-  // KNN classification
+  // KNN regression
   function classifyQuery() {
     if (!queryPoint) return;
     const k = parseInt(kSelect.value);
@@ -123,19 +163,13 @@ window.onload = function() {
     distances.sort((a, b) => a.dist - b.dist);
     // Select K nearest
     const neighbors = distances.slice(0, k);
-    // Majority vote
-    let votes = { 0: 0, 1: 0 };
-    neighbors.forEach(n => votes[n.pt.label]++);
-    let winner;
-    if (votes[0] > votes[1]) winner = 0;
-    else if (votes[1] > votes[0]) winner = 1;
-    else winner = neighbors[0].pt.label; // Tie: closest neighbor
-    // Update query point color
+    // Average value
+    const avg = Math.round(neighbors.reduce((sum, n) => sum + n.pt.value, 0) / k);
     queryPoint.classified = true;
-    queryPoint.label = winner;
+    queryPoint.value = avg;
     queryPoint.neighbors = neighbors.map(n => n.pt);
     // Show result
-    resultDiv.textContent = `Class: ${winner === 0 ? 'Blue' : 'Orange'} (${votes[winner]}/${k})`;
+    resultDiv.textContent = `Predicted value: ${avg} (K=${k})`;
     render();
   }
 
@@ -148,35 +182,4 @@ window.onload = function() {
       classifyQuery();
     }
   };
-
-  // Enhanced render: draw lines to neighbors if classified
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw training points
-    points.forEach(pt => {
-      drawPoint(pt.x, pt.y, COLORS[pt.label], 7);
-    });
-    // Draw query point if exists
-    if (queryPoint) {
-      // Draw lines to neighbors if classified
-      if (queryPoint.classified && queryPoint.neighbors) {
-        ctx.save();
-        ctx.globalAlpha = 0.18;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = COLORS[queryPoint.label];
-        ctx.lineWidth = 2;
-        queryPoint.neighbors.forEach(npt => {
-          ctx.beginPath();
-          ctx.moveTo(queryPoint.x * canvas.width, queryPoint.y * canvas.height);
-          ctx.lineTo(npt.x * canvas.width, npt.y * canvas.height);
-          ctx.stroke();
-        });
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-      // Draw query point in gray or classified color, slightly larger
-      const color = queryPoint.classified ? COLORS[queryPoint.label] : '#888';
-      drawPoint(queryPoint.x, queryPoint.y, color, 12);
-    }
-  }
 };
