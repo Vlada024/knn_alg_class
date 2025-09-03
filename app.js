@@ -20,7 +20,7 @@ window.onload = function() {
     1: '#ff9800'  // orange
   };
 
-  // Generate random dataset (regression)
+  // Generate random dataset (regression, decimals 1-10)
   function generateDataset() {
     const numPoints = Math.floor(Math.random() * 3) + 9; // 9–11
     let pointsArr = [];
@@ -28,16 +28,15 @@ window.onload = function() {
       pointsArr.push({
         x: Math.random(),
         y: Math.random(),
-        value: Math.round(Math.random() * 100)
+        value: +(Math.random() * 9 + 1).toFixed(2)
       });
     }
     return pointsArr;
   }
 
-  // Draw a single point with value and color by value
+  // Draw a single point with value and color (all blue)
   function drawPoint(nx, ny, value, radius, showValue) {
-    // Color scale: blue for low, orange for high
-    const color = value < 50 ? '#1976d2' : '#ff9800';
+    const color = '#1976d2';
     const px = Math.round(nx * canvas.width) + 0.5;
     const py = Math.round(ny * canvas.height) + 0.5;
     ctx.save();
@@ -77,7 +76,7 @@ window.onload = function() {
         ctx.save();
         ctx.globalAlpha = 0.18;
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = queryPoint.value < 50 ? '#1976d2' : '#ff9800';
+        ctx.strokeStyle = '#1976d2';
         ctx.lineWidth = 2;
         queryPoint.neighbors.forEach(npt => {
           ctx.beginPath();
@@ -88,7 +87,7 @@ window.onload = function() {
         ctx.setLineDash([]);
         ctx.restore();
       }
-      // Draw query point in gray or classified color, slightly larger, with value if classified
+      // Draw query point in gray or blue, slightly larger, with value if classified
       if (queryPoint.classified) {
         drawPoint(queryPoint.x, queryPoint.y, queryPoint.value, 16, true);
       } else {
@@ -149,7 +148,7 @@ window.onload = function() {
   function classifyQuery() {
     if (!queryPoint) return;
     const k = parseInt(kSelect.value);
-    // Compute distances
+    // Compute distances using exact coordinates
     let distances = points.map(pt => {
       const dx = pt.x - queryPoint.x;
       const dy = pt.y - queryPoint.y;
@@ -160,10 +159,10 @@ window.onload = function() {
     });
     // Sort by distance
     distances.sort((a, b) => a.dist - b.dist);
-    // Select K nearest
+    // Always take K nearest neighbors
     const neighbors = distances.slice(0, k);
-    // Average value
-    const avg = Math.round(neighbors.reduce((sum, n) => sum + n.pt.value, 0) / k);
+    // Average value (decimal)
+    const avg = +(neighbors.reduce((sum, n) => sum + n.pt.value, 0) / k).toFixed(2);
     queryPoint.classified = true;
     queryPoint.value = avg;
     queryPoint.neighbors = neighbors.map(n => n.pt);
