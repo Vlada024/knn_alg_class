@@ -135,8 +135,7 @@ window.onload = function() {
     const nx = Math.max(0, Math.min(1, px / canvas.width));
     const ny = Math.max(0, Math.min(1, py / canvas.height));
     queryPoint = { x: nx, y: ny, classified: false };
-    resultDiv.textContent = '';
-    render();
+    classifyQuery(); // Immediately classify and show value
   });
 
   // Reset Query button
